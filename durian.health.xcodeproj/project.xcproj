@@ -2,7 +2,7 @@
   "default-configuration": "Release",
   "configurations": [
     "Debug",
-    "Release",
+    { "name": "Release", "file": "Secrets.xcconfig" },
   ],
   "localizations": {
     "development": "en",
@@ -11,7 +11,9 @@
     ],
   },
   "files": [
+    { "path": "durian-health-Info.plist" },
     { "kind": "folder", "path": "durian.health", "target-membership": [ "durian.health" ] },
+    { "path": "Secrets.xcconfig" },
     {
       "kind": "group",
       "name": "Products",
@@ -26,6 +28,9 @@
       "id": "9C3359EA30AD9E7200867813",
       "product": "Products/durian.health.app",
       "product-type": "application",
+      "specialized-configurations": [
+        { "name": "Release", "file": "Secrets.xcconfig" },
+      ],
       "build-phases": [
         "compile-sources",
         "frameworks",
@@ -39,6 +44,7 @@
         "DEVELOPMENT_TEAM": "TF78VK25DW",
         "ENABLE_PREVIEWS": "YES",
         "GENERATE_INFOPLIST_FILE": "YES",
+        "INFOPLIST_FILE": "durian-health-Info.plist",
         "INFOPLIST_KEY_UIApplicationSceneManifest_Generation": "YES",
         "INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents": "YES",
         "INFOPLIST_KEY_UILaunchScreen_Generation": "YES",
