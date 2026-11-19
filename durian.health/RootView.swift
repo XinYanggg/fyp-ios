@@ -15,7 +15,7 @@ struct RootView: View {
                 ProgressView()
                     .controlSize(.large)
             } else if auth.isSignedIn {
-                SignedInPlaceholderView()
+                MainTabView()
             } else {
                 AuthFlowView()
             }
