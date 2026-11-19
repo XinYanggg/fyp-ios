@@ -36,6 +36,8 @@ final class APIClient {
     var baseURL: URL
     /// Set by the auth layer after login / session restore.
     var token: String?
+    /// Called when an authenticated request is rejected with 401 (expired or invalid token).
+    var onUnauthorized: (() -> Void)?
 
     private let session: URLSession
     private let decoder = JSONDecoder()
@@ -112,7 +114,10 @@ final class APIClient {
         guard let http = response as? HTTPURLResponse else { throw APIError.network }
 
         guard (200..<300).contains(http.statusCode) else {
-            if http.statusCode == 401 && token != nil { throw APIError.unauthorized }
+            if http.statusCode == 401 && token != nil {
+                onUnauthorized?()
+                throw APIError.unauthorized
+            }
             throw APIError.server(status: http.statusCode, message: Self.errorMessage(from: data, status: http.statusCode))
         }
 

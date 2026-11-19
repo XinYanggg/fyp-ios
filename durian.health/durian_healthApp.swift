@@ -9,9 +9,13 @@ import SwiftUI
 
 @main
 struct durian_healthApp: App {
+    @State private var auth = AuthStore()
+
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            RootView()
+                .environment(auth)
+                .tint(.durianGreen)
         }
     }
 }
