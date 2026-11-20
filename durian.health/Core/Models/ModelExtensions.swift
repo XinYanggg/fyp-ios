@@ -28,6 +28,26 @@ nonisolated extension Farm {
     }
 }
 
+nonisolated extension DetectionResult {
+    /// "algal_leaf_spot" -> "Algal Leaf Spot", the same formatting the website and Android use.
+    var diseaseName: String {
+        prediction
+            .lowercased()
+            .split(separator: "_")
+            .map { $0.prefix(1).uppercased() + $0.dropFirst() }
+            .joined(separator: " ")
+    }
+
+    /// The API returns a 0...1 fraction (e.g. 0.99874). This converts it to a percentage
+    /// rounded to 2 decimals (99.87), the same as the website, and clamps it to 0...100.
+    var confidencePercent: Double {
+        min(max((confidence * 10000).rounded() / 100, 0), 100)
+    }
+
+    /// A result that displays as 0% is not a usable diagnosis.
+    var isUsable: Bool { confidencePercent.rounded() > 0 }
+}
+
 nonisolated enum Severity {
     case healthy, warning, danger
 

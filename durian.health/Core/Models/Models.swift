@@ -98,7 +98,13 @@ nonisolated struct FarmResponse: Decodable {
     let farm: Farm
 }
 
+/// Response of /api/scan/detect. `confidence` is a 0...1 fraction; use `confidencePercent` for display and saving.
 nonisolated struct DetectionResult: Decodable, Hashable {
     let prediction: String
     let confidence: Double
+}
+
+/// /api/scan/save returns `{ "farm": null }` when the farm or tree doesn't exist.
+nonisolated struct SaveScanResponse: Decodable {
+    let farm: Farm?
 }

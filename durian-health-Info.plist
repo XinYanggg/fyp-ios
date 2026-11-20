@@ -2,6 +2,8 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>NSCameraUsageDescription</key>
+	<string>durian.health uses the camera to photograph durian leaves so the AI can check them for disease.</string>
 	<key>APIBaseURL</key>
 	<string>$(API_BASE_URL)</string>
 </dict>

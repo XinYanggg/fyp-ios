@@ -14,10 +14,14 @@ struct MainTabView: View {
             Tab("Farms", systemImage: "leaf") {
                 FarmsView()
             }
+            Tab("Scan", systemImage: "camera.viewfinder") {
+                ScanView()
+            }
             Tab("Profile", systemImage: "person.crop.circle") {
                 ProfileView()
             }
         }
         .environment(farmStore)
+        .task { await farmStore.load() }
     }
 }

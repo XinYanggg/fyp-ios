@@ -74,6 +74,25 @@ final class FarmStore {
         replace(response.farm)
     }
 
+    /// Saves a diagnosis to a tree's history. `confidence` is a percentage (0...100).
+    func saveScan(farmId: String, treeId: String, disease: String, confidence: Double) async throws {
+        struct Body: Encodable {
+            let farmId: String
+            let treeId: String
+            let disease: String
+            let confidence: Double
+        }
+        let response: SaveScanResponse = try await api.send(
+            "/api/scan/save",
+            method: "POST",
+            body: Body(farmId: farmId, treeId: treeId, disease: disease, confidence: confidence)
+        )
+        guard let farm = response.farm else {
+            throw APIError.server(status: 404, message: "That farm or tree no longer exists. Pull to refresh and try again.")
+        }
+        replace(farm)
+    }
+
     func addMember(farmId: String, email: String) async throws {
         try await updateMember(path: "/api/farm/member/add", farmId: farmId, email: email)
     }

@@ -25,7 +25,6 @@ struct FarmsView: View {
                 .navigationDestination(for: TreeRoute.self) { TreeDetailView(farmId: $0.farmId, treeId: $0.treeId) }
                 .sheet(isPresented: $showAddFarm) { AddFarmSheet() }
         }
-        .task { if !store.hasLoaded { await store.load() } }
     }
 
     @ViewBuilder
