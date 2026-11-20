@@ -17,7 +17,7 @@ struct RootView: View {
             } else if auth.isSignedIn {
                 MainTabView()
             } else {
-                AuthFlowView()
+                WelcomeView()
             }
         }
         .animation(.default, value: auth.isRestoring)

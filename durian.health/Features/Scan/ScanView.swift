@@ -8,6 +8,7 @@ import SwiftUI
 
 struct ScanView: View {
     @Environment(FarmStore.self) private var store
+    @Environment(AppRouter.self) private var router
 
     // Target
     @State private var farmId: String?
@@ -46,7 +47,11 @@ struct ScanView: View {
             }
             .navigationTitle("Scan")
         }
-        .onAppear(perform: ensureSelection)
+        .onAppear {
+            applyScanTarget()
+            ensureSelection()
+        }
+        .onChange(of: router.scanTarget) { applyScanTarget() }
         .onChange(of: store.farms) { ensureSelection() }
         .onChange(of: farmId) { ensureSelection() }
         .onChange(of: pickerItem) { _, item in
@@ -68,12 +73,23 @@ struct ScanView: View {
                     .listRowInsets(EdgeInsets())
                     .listRowBackground(Color.clear)
 
-                if CameraPicker.isAvailable {
-                    Button("Take Photo", systemImage: "camera") { showCamera = true }
+                HStack(spacing: 10) {
+                    if CameraPicker.isAvailable {
+                        Button { showCamera = true } label: {
+                            Label("Camera", systemImage: "camera")
+                                .frame(maxWidth: .infinity, minHeight: 44)
+                        }
+                        .buttonStyle(.bordered)
+                    }
+                    PhotosPicker(selection: $pickerItem, matching: .images, photoLibrary: .shared()) {
+                        Label("Library", systemImage: "photo.on.rectangle")
+                            .frame(maxWidth: .infinity, minHeight: 44)
+                    }
+                    .buttonStyle(.bordered)
                 }
-                PhotosPicker(selection: $pickerItem, matching: .images, photoLibrary: .shared()) {
-                    Label("Choose from Library", systemImage: "photo.on.rectangle")
-                }
+                .font(.subheadline.weight(.semibold))
+                .listRowInsets(EdgeInsets())
+                .listRowBackground(Color.clear)
             } header: {
                 Text("Leaf photo")
             } footer: {
@@ -99,22 +115,28 @@ struct ScanView: View {
 
     private var photoArea: some View {
         ZStack {
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(.fill.tertiary)
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(Color(.secondarySystemGroupedBackground))
             if let preview {
-                Image(uiImage: preview)
-                    .resizable()
-                    .scaledToFill()
-            } else {
-                VStack(spacing: 8) {
-                    Image(systemName: "camera.viewfinder").font(.system(size: 40))
-                    Text("No photo selected").font(.subheadline)
+                // Overlay on a flexible frame so scaledToFill can't widen the row.
+                Color.clear.overlay {
+                    Image(uiImage: preview)
+                        .resizable()
+                        .scaledToFill()
                 }
-                .foregroundStyle(.secondary)
+            } else {
+                VStack(spacing: 10) {
+                    IconTile(systemName: "leaf.fill", size: 56)
+                    Text("Add a leaf photo").font(.headline)
+                    Text("Use the camera or pick one from your library.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                .padding()
             }
         }
-        .frame(height: 260)
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .frame(height: 280)
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
     }
 
     @ViewBuilder
@@ -160,6 +182,16 @@ struct ScanView: View {
     }
 
     // MARK: - Actions
+
+    /// Preselects the farm and tree requested by "Scan This Tree", then clears the request.
+    /// A finished scan is reset so the new target starts fresh; a photo in progress is kept.
+    private func applyScanTarget() {
+        guard let target = router.scanTarget else { return }
+        router.scanTarget = nil
+        if isSaved { reset() }
+        farmId = target.farmId
+        treeId = target.treeId
+    }
 
     /// Keeps the farm/tree pickers pointing at something that exists.
     private func ensureSelection() {

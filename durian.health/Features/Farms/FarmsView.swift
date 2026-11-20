@@ -10,10 +10,12 @@ struct TreeRoute: Hashable { let farmId: String; let treeId: String }
 
 struct FarmsView: View {
     @Environment(FarmStore.self) private var store
+    @Environment(AppRouter.self) private var router
     @State private var showAddFarm = false
 
     var body: some View {
-        NavigationStack {
+        @Bindable var router = router
+        NavigationStack(path: $router.farmsPath) {
             content
                 .navigationTitle("Farms")
                 .toolbar {
@@ -52,11 +54,14 @@ struct FarmsView: View {
                 }
             }
         } else {
-            List(store.farms) { farm in
-                NavigationLink(value: FarmRoute(farmId: farm.id)) {
-                    FarmRow(farm: farm)
+            List {
+                ForEach(store.farms) { farm in
+                    NavigationLink(value: FarmRoute(farmId: farm.id)) {
+                        FarmRow(farm: farm)
+                    }
                 }
             }
+            .listRowSpacing(10)
             .refreshable { await store.load() }
             .overlay(alignment: .bottom) {
                 if let error = store.loadError {
@@ -75,21 +80,32 @@ private struct FarmRow: View {
     let farm: Farm
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(farm.name).font(.headline)
-            if !farm.location.isEmpty {
-                Label(farm.location, systemImage: "mappin.and.ellipse")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .firstTextBaseline) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(farm.name).font(.headline)
+                    if !farm.location.isEmpty {
+                        Text(farm.location)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                Spacer()
+                Text("\(farm.healthPercent)%")
+                    .font(.system(.title3, design: .rounded).weight(.bold))
             }
-            HStack(spacing: 12) {
+            HealthBar(percent: farm.healthPercent, height: 6)
+            HStack(spacing: 14) {
                 Label("\(farm.trees.count) trees", systemImage: "tree")
-                Label("\(farm.healthPercent)% healthy", systemImage: "heart.fill")
-                    .foregroundStyle(farm.attentionCount == 0 ? Color.durianGreen : .orange)
+                if farm.attentionCount > 0 {
+                    Label("\(farm.attentionCount) need attention", systemImage: "exclamationmark.triangle")
+                        .foregroundStyle(.orange)
+                }
+                Label("\(farm.members.count)", systemImage: "person.2")
             }
             .font(.caption)
             .foregroundStyle(.secondary)
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 6)
     }
 }

@@ -5,72 +5,79 @@
 
 import SwiftUI
 
-/// Sign in / create account screen shown while signed out.
+/// Sign in / create account, presented as a sheet from the welcome screen.
+/// The sheet goes away by itself once the user is signed in, because RootView swaps to the tabs.
 struct AuthFlowView: View {
     enum Mode: String, CaseIterable, Identifiable {
-        case login = "Sign In"
+        case login = "Log In"
         case register = "Create Account"
         var id: String { rawValue }
     }
 
-    @State private var mode: Mode = .login
+    @Environment(\.dismiss) private var dismiss
+    @State private var mode: Mode
     /// Shown above the login form after a successful registration.
     @State private var notice: String?
 
+    init(initialMode: Mode = .login) {
+        _mode = State(initialValue: initialMode)
+    }
+
     var body: some View {
-        ScrollView {
-            VStack(spacing: 24) {
-                header
-
-                Picker("Mode", selection: $mode) {
-                    ForEach(Mode.allCases) { Text($0.rawValue).tag($0) }
-                }
-                .pickerStyle(.segmented)
-
-                if let notice {
-                    Label(notice, systemImage: "envelope.badge")
-                        .font(.subheadline)
-                        .padding(12)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(Color.durianGreen.opacity(0.12), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                }
-
-                switch mode {
-                case .login:
-                    LoginView()
-                case .register:
-                    RegisterView { message in
-                        notice = message
-                        mode = .login
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 24) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(mode == .login ? "Welcome back" : "Create your account")
+                            .font(.title.bold())
+                        Text(mode == .login
+                             ? "Log in to check on your trees."
+                             : "Start tracking the health of your durian trees.")
+                            .foregroundStyle(.secondary)
                     }
-                }
 
-                // Google creates the account on first sign-in, so it fits both modes.
-                GoogleSignInSection()
+                    Picker("Mode", selection: $mode.animation()) {
+                        ForEach(Mode.allCases) { Text($0.rawValue).tag($0) }
+                    }
+                    .pickerStyle(.segmented)
+
+                    if let notice {
+                        Label(notice, systemImage: "envelope.badge")
+                            .font(.subheadline)
+                            .padding(12)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(Color.durianGreen.opacity(0.12), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    }
+
+                    switch mode {
+                    case .login:
+                        LoginView()
+                    case .register:
+                        RegisterView { message in
+                            notice = message
+                            mode = .login
+                        }
+                    }
+
+                    // Google creates the account on first sign-in, so it fits both modes.
+                    GoogleSignInSection()
+                }
+                .padding(24)
+                .frame(maxWidth: 480)
+                .frame(maxWidth: .infinity)
             }
-            .padding(24)
-            .frame(maxWidth: 480)
-            .frame(maxWidth: .infinity)
+            .scrollDismissesKeyboard(.interactively)
+            .toolbar {
+                ToolbarItem(placement: .principal) { Wordmark(size: 17) }
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Close", systemImage: "xmark") { dismiss() }
+                }
+            }
+            .navigationBarTitleDisplayMode(.inline)
         }
-        .scrollDismissesKeyboard(.interactively)
         .onChange(of: mode) { _, newValue in
             if newValue == .register { notice = nil }
         }
-    }
-
-    private var header: some View {
-        VStack(spacing: 8) {
-            Image(systemName: "leaf.fill")
-                .font(.system(size: 44))
-                .foregroundStyle(Color.durianGreen)
-            Text("durian.health")
-                .font(.largeTitle.bold())
-            Text("Monitor your durian trees and catch leaf disease early.")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-        }
-        .padding(.top, 32)
     }
 }
 

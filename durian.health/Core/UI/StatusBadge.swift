@@ -14,22 +14,8 @@ struct StatusBadge: View {
     var confidence: Double?
 
     private var severity: Severity { Severity(disease: disease) }
-
-    private var color: Color {
-        switch severity {
-        case .healthy: .durianGreen
-        case .warning: .orange
-        case .danger: .red
-        }
-    }
-
-    private var icon: String {
-        switch severity {
-        case .healthy: "checkmark.circle.fill"
-        case .warning: "exclamationmark.triangle.fill"
-        case .danger: "exclamationmark.octagon.fill"
-        }
-    }
+    private var color: Color { severity.color }
+    private var icon: String { severity.icon }
 
     var body: some View {
         HStack(spacing: 4) {
@@ -66,5 +52,23 @@ struct StatusRow: View {
         StatusRow(title: "Condition", disease: "Healthy")
         StatusRow(title: "Condition", disease: "Algal Leaf Spot", confidence: 91.2)
         StatusBadge(disease: "Leaf Blight", confidence: 78)
+    }
+}
+
+extension Severity {
+    var color: Color {
+        switch self {
+        case .healthy: .durianGreen
+        case .warning: .orange
+        case .danger: .red
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .healthy: "checkmark.circle.fill"
+        case .warning: "exclamationmark.triangle.fill"
+        case .danger: "exclamationmark.octagon.fill"
+        }
     }
 }
