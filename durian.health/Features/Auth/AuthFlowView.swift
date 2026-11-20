@@ -44,6 +44,9 @@ struct AuthFlowView: View {
                         mode = .login
                     }
                 }
+
+                // Google creates the account on first sign-in, so it fits both modes.
+                GoogleSignInSection()
             }
             .padding(24)
             .frame(maxWidth: 480)

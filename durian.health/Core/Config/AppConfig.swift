@@ -28,6 +28,17 @@ nonisolated enum AppConfig {
         return url
     }
 
+    /// True when both Google client IDs are filled in (GIDClientID and GIDServerClientID in
+    /// Info.plist, from Secrets.xcconfig). The Google button is hidden otherwise, because
+    /// GoogleSignIn throws on an invalid client ID.
+    static var isGoogleSignInConfigured: Bool {
+        let suffix = ".apps.googleusercontent.com"
+        return ["GIDClientID", "GIDServerClientID"].allSatisfy { key in
+            guard let value = plistValue(key) else { return false }
+            return value.hasSuffix(suffix) && value.count > suffix.count && !value.hasPrefix(".")
+        }
+    }
+
     /// Reads a string from Info.plist. Returns nil when missing, empty, or an
     /// unexpanded `$(VARIABLE)` placeholder.
     private static func plistValue(_ key: String) -> String? {

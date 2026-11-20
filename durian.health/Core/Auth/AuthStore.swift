@@ -4,7 +4,9 @@
 //
 
 import Foundation
+import GoogleSignIn
 import Observation
+import UIKit
 
 /// Owns the signed-in session: login, register, restore on launch, logout.
 /// The token and user are kept in the Keychain; the token is also handed to `APIClient`.
@@ -87,6 +89,41 @@ final class AuthStore {
         return response.message
     }
 
+    /// Native Google Sign-In, then exchanges the Google ID token for an app token at
+    /// /api/mobile/google. Returns false if the user cancelled.
+    ///
+    /// The ID token's audience is GIDServerClientID (the website's GOOGLE_CLIENT_ID),
+    /// which is what the backend checks.
+    @discardableResult
+    func loginWithGoogle(presenting viewController: UIViewController) async throws -> Bool {
+        let result: GIDSignInResult
+        do {
+            result = try await GIDSignIn.sharedInstance.signIn(withPresenting: viewController)
+        } catch let error as GIDSignInError where error.code == .canceled {
+            return false
+        }
+
+        guard let idToken = result.user.idToken?.tokenString else {
+            GIDSignIn.sharedInstance.signOut()
+            throw APIError.server(status: 0, message: "Google did not return an ID token.")
+        }
+
+        struct Body: Encodable { let idToken: String }
+        do {
+            let response: AuthResponse = try await api.send(
+                "/api/mobile/google",
+                method: "POST",
+                body: Body(idToken: idToken)
+            )
+            try save(token: response.token, user: response.user)
+        } catch {
+            // Don't leave a Google session behind if our backend rejected it.
+            GIDSignIn.sharedInstance.signOut()
+            throw error
+        }
+        return true
+    }
+
     func logout() {
         clearSession()
     }
@@ -111,6 +148,8 @@ final class AuthStore {
     }
 
     private func clearSession() {
+        // No-op if the user didn't sign in with Google.
+        GIDSignIn.sharedInstance.signOut()
         keychain.delete(tokenKey)
         keychain.delete(userKey)
         api.token = nil

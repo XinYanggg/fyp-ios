@@ -4,6 +4,19 @@
 <dict>
 	<key>NSCameraUsageDescription</key>
 	<string>durian.health uses the camera to photograph durian leaves so the AI can check them for disease.</string>
+	<key>GIDClientID</key>
+	<string>$(GOOGLE_IOS_CLIENT_ID)</string>
+	<key>GIDServerClientID</key>
+	<string>$(GOOGLE_WEB_CLIENT_ID)</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>$(GOOGLE_IOS_REVERSED_CLIENT_ID)</string>
+			</array>
+		</dict>
+	</array>
 	<key>APIBaseURL</key>
 	<string>$(API_BASE_URL)</string>
 </dict>
