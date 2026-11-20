@@ -6,6 +6,9 @@
 import SwiftUI
 
 /// Pill showing a disease name (and optional confidence) in a severity color.
+///
+/// Built from an HStack rather than `Label`, so List rows don't apply their own
+/// label styling to it. It always takes its natural size.
 struct StatusBadge: View {
     let disease: String
     var confidence: Double?
@@ -29,24 +32,39 @@ struct StatusBadge: View {
     }
 
     var body: some View {
-        Label {
-            Text(confidence.map { "\(disease) (\($0.percentText))" } ?? disease)
-        } icon: {
+        HStack(spacing: 4) {
             Image(systemName: icon)
+            Text(confidence.map { "\(disease) (\($0.percentText))" } ?? disease)
+                .lineLimit(1)
         }
         .font(.caption.weight(.semibold))
         .foregroundStyle(color)
         .padding(.horizontal, 10)
         .padding(.vertical, 5)
         .background(color.opacity(0.14), in: Capsule())
+        .fixedSize()
+    }
+}
+
+/// List row with a title on the left and a status badge on the right.
+struct StatusRow: View {
+    let title: String
+    let disease: String
+    var confidence: Double?
+
+    var body: some View {
+        HStack {
+            Text(title)
+            Spacer(minLength: 12)
+            StatusBadge(disease: disease, confidence: confidence)
+        }
     }
 }
 
 #Preview {
-    VStack(alignment: .leading, spacing: 8) {
-        StatusBadge(disease: "Healthy")
-        StatusBadge(disease: "Algal Leaf Spot", confidence: 91.2)
+    List {
+        StatusRow(title: "Condition", disease: "Healthy")
+        StatusRow(title: "Condition", disease: "Algal Leaf Spot", confidence: 91.2)
         StatusBadge(disease: "Leaf Blight", confidence: 78)
     }
-    .padding()
 }

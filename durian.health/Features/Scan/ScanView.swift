@@ -120,9 +120,7 @@ struct ScanView: View {
     @ViewBuilder
     private func resultSection(_ result: DetectionResult) -> some View {
         Section("Diagnosis") {
-            LabeledContent("Condition") {
-                StatusBadge(disease: result.diseaseName, confidence: result.confidencePercent)
-            }
+            StatusRow(title: "Condition", disease: result.diseaseName, confidence: result.confidencePercent)
 
             if isSaved {
                 Label("Saved to tree \(tree?.id ?? "")", systemImage: "checkmark.circle.fill")

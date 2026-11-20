@@ -21,9 +21,7 @@ struct TreeDetailView: View {
                 Section("Current status") {
                     LabeledContent("Cultivar", value: tree.cultivar)
                     if tree.hasBeenScanned {
-                        LabeledContent("Condition") {
-                            StatusBadge(disease: tree.currentDisease, confidence: tree.confidence)
-                        }
+                        StatusRow(title: "Condition", disease: tree.currentDisease, confidence: tree.confidence)
                         LabeledContent("Last scan", value: tree.lastScan)
                     } else {
                         Text("Not scanned yet").foregroundStyle(.secondary)

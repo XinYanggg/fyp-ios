@@ -15,9 +15,7 @@ struct ProfileView: View {
                 if let user = auth.user {
                     Section {
                         HStack(spacing: 14) {
-                            Image(systemName: "person.crop.circle.fill")
-                                .font(.system(size: 44))
-                                .foregroundStyle(Color.durianGreen)
+                            AvatarView(user: user, size: 56)
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(user.name ?? "Farmer").font(.headline)
                                 Text(user.email).font(.subheadline).foregroundStyle(.secondary)
