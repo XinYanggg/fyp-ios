@@ -1,0 +1,163 @@
+name: Build iOS Simulator App
+
+# Builds a Release app for the iOS Simulator, zips it and attaches it to a GitHub Release.
+#   - Push a tag like v1.0.0 to publish a release
+#   - Or run it manually from the Actions tab (zip is uploaded as an artifact)
+#
+# Simulator builds don't need an Apple certificate or provisioning profile.
+# They run in the iOS Simulator only, not on a physical iPhone.
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    # macOS image with Xcode 27.x (public preview label). The project needs Xcode 27.2.
+    runs-on: xcode-27
+    environment: Prod
+    timeout-minutes: 60
+
+    env:
+      XCODE_APP: /Applications/Xcode_27.2.app
+      SCHEME: durian.health
+      DERIVED_DATA: ${{ github.workspace }}/build
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check required secrets
+        env:
+          API_BASE_URL: ${{ secrets.API_BASE_URL }}
+          GOOGLE_WEB_CLIENT_ID: ${{ secrets.GOOGLE_WEB_CLIENT_ID }}
+          GOOGLE_IOS_CLIENT_ID_PREFIX: ${{ secrets.GOOGLE_IOS_CLIENT_ID_PREFIX }}
+        run: |
+          missing=0
+          for name in API_BASE_URL GOOGLE_WEB_CLIENT_ID; do
+            if [ -z "${!name:-}" ]; then
+              echo "::error::Secret $name is empty or missing. Add it under Settings > Secrets and variables > Actions > Secrets (not Variables)."
+              missing=1
+            fi
+          done
+          if [ "$missing" -ne 0 ]; then exit 1; fi
+
+          case "$API_BASE_URL" in
+            https://*) ;;
+            *) echo "::error::API_BASE_URL must start with https:// (Release builds have no HTTP exception)."; exit 1 ;;
+          esac
+
+          if [ -z "${GOOGLE_IOS_CLIENT_ID_PREFIX:-}" ]; then
+            echo "::warning::GOOGLE_IOS_CLIENT_ID_PREFIX is not set. The app will build without the Google Sign-In button."
+          fi
+
+      - name: Select Xcode 27.2
+        run: |
+          sudo xcode-select -s "$XCODE_APP/Contents/Developer"
+          xcodebuild -version
+
+      - name: Create Secrets.xcconfig
+        env:
+          API_BASE_URL: ${{ secrets.API_BASE_URL }}
+          GOOGLE_WEB_CLIENT_ID: ${{ secrets.GOOGLE_WEB_CLIENT_ID }}
+          GOOGLE_IOS_CLIENT_ID_PREFIX: ${{ secrets.GOOGLE_IOS_CLIENT_ID_PREFIX }}
+        run: |
+          set -euo pipefail
+          # xcconfig treats "//" as a comment, so write it as $(SLASH)$(SLASH).
+          url="${API_BASE_URL%/}"
+          url="${url//\/\//\$(SLASH)\$(SLASH)}"
+          {
+            echo 'SLASH = /'
+            echo "API_BASE_URL = $url"
+            echo "GOOGLE_WEB_CLIENT_ID = $GOOGLE_WEB_CLIENT_ID"
+            echo "GOOGLE_IOS_CLIENT_ID_PREFIX = ${GOOGLE_IOS_CLIENT_ID_PREFIX:-}"
+            echo 'GOOGLE_IOS_CLIENT_ID = $(GOOGLE_IOS_CLIENT_ID_PREFIX).apps.googleusercontent.com'
+            echo 'GOOGLE_IOS_REVERSED_CLIENT_ID = com.googleusercontent.apps.$(GOOGLE_IOS_CLIENT_ID_PREFIX)'
+          } > Secrets.xcconfig
+
+      - name: Cache Swift packages
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.DERIVED_DATA }}/SourcePackages
+          key: spm-${{ runner.os }}-${{ hashFiles('**/Package.resolved') }}
+          restore-keys: spm-${{ runner.os }}-
+
+      - name: Build Release for iOS Simulator
+        run: |
+          set -euo pipefail
+          # -disableAutomaticPackageResolution: use exactly the versions in Package.resolved.
+          # CODE_SIGN_IDENTITY=-: ad-hoc "Sign to Run Locally", what Xcode uses for simulator builds without a team.
+          xcodebuild build \
+            -project durian.health.xcodeproj \
+            -scheme "$SCHEME" \
+            -configuration Release \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$DERIVED_DATA" \
+            -disableAutomaticPackageResolution \
+            CODE_SIGN_IDENTITY=- \
+            CODE_SIGN_STYLE=Manual \
+            DEVELOPMENT_TEAM= \
+            | xcbeautify --renderer github-actions
+
+      - name: Verify and zip app
+        id: package
+        run: |
+          set -euo pipefail
+          APP="$DERIVED_DATA/Build/Products/Release-iphonesimulator/durian.health.app"
+          test -d "$APP" || { echo "::error::Built app not found at $APP"; exit 1; }
+
+          # Fail if the backend URL didn't make it into the app.
+          url="$(/usr/libexec/PlistBuddy -c 'Print :APIBaseURL' "$APP/Info.plist")"
+          case "$url" in
+            https://*) echo "APIBaseURL: $url" ;;
+            *) echo "::error::APIBaseURL in Info.plist is '$url'. Check API_BASE_URL."; exit 1 ;;
+          esac
+
+          # The secrets file must never be bundled.
+          if find "$APP" -name '*.xcconfig' | grep -q .; then
+            echo "::error::An .xcconfig file was copied into the app bundle."
+            exit 1
+          fi
+
+          echo "Architectures: $(lipo -archs "$APP/durian.health")"
+
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            version="$GITHUB_REF_NAME"
+          else
+            version="$(git rev-parse --short HEAD)"
+          fi
+          zip="durian-health-ios-simulator-$version.zip"
+          # ditto keeps the bundle structure intact. --norsrc/--noextattr leave out macOS
+          # metadata, so the zip has no __MACOSX folder. The code signature is in the bundle itself.
+          ditto -c -k --norsrc --noextattr --keepParent "$APP" "$zip"
+          echo "zip=$zip" >> "$GITHUB_OUTPUT"
+          ls -lh "$zip"
+
+      - name: Upload zip artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: durian-health-ios-simulator
+          path: ${{ steps.package.outputs.zip }}
+
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ steps.package.outputs.zip }}
+          generate_release_notes: true
+          body: |
+            ### Run in the iOS Simulator
+
+            Requires a Mac with Xcode 27.2 and an iOS 27.2 simulator. This build does not install on a physical iPhone.
+
+            1. Download and unzip `${{ steps.package.outputs.zip }}`.
+            2. Start a simulator (Xcode > Open Developer Tool > Simulator).
+            3. Drag `durian.health.app` onto the simulator window, or run:
+               ```bash
+               xcrun simctl install booted durian.health.app
+               xcrun simctl launch booted com.farnxinyang.durian-health
+               ```
